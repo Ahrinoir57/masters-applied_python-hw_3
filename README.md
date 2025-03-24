@@ -231,4 +231,6 @@ There are 3 tables: Links, Users, Requests.
 
 Links are checked with a cron script `./cron_clear_db/clear_expired_links.py` every 24 hours: all expired links are made inactive.
 
+Redis is used as a faster means of returning tokens of authorized users. (I have no idea how to use it for links. The logic of the app does not allow it.)
+
 

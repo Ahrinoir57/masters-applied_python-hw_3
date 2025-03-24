@@ -12,6 +12,8 @@ from typing import Annotated, Optional
 import link_app.db 
 import link_app.users
 
+import aioredis
+
 
 class UserData(BaseModel):
     login: str
@@ -36,10 +38,14 @@ app = FastAPI()
 
 security = HTTPBearer()
 opt_security = OptionalHTTPBearer()
+redis = None
 
 @app.on_event("startup")
 async def startup():
+    global redis
+
     await link_app.db.create_sql_database()
+    redis = await aioredis.from_url("redis://redis")
 
 
 @app.post("/links/shorten")
@@ -184,6 +190,8 @@ async def register_user(payload: UserData):
 
     if err != None:
         raise HTTPException(status_code=400, detail=err)
+    
+    await redis.set(payload.login, token, ex=3600)
 
     return {'token': token}
 
@@ -191,9 +199,16 @@ async def register_user(payload: UserData):
 @app.post("/auth/login")
 async def login_user(payload:UserData):
 
+    cache = await redis.get(payload.login)
+
+    if cache is not None:
+        return {'token': cache}
+
     token = await link_app.users.login_user(payload.login, payload.password)
 
     if token is None:
         raise HTTPException(status_code=401, detail="Login/Password is wronk")
+    
+    await redis.set(payload.login, token, ex=3600)
     
     return {'token': token}

@@ -7,6 +7,8 @@ services:
       postgresql:
         condition: service_healthy
         restart: true
+      redis:
+        condition: service_started
   postgresql:
     image: postgres
     environment:
@@ -17,3 +19,7 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
