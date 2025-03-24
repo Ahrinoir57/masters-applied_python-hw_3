@@ -111,6 +111,7 @@ Example Response:
 ### GET /links/{short_code}
 
 Get Redirect Response to the binded long url.
+Whenever a short link is used, its expiration time is set to 3 days, if it was supposed to die sooner.
 
 Input: None  
 Output: Redirect Response
@@ -164,7 +165,7 @@ Example Response:
 
 ### GET /links/{short_code}/stats
 Get statistics for the short url.  
-The statistics include: the amount of times used, the amount of registered users that used this link, last usage datetime and when was this link created.
+The statistics include: the amount of times used, last usage datetime and when was this link created.
 
 Example:
 ```
@@ -178,9 +179,35 @@ Example Response:
 {
   "request_count": 1,
   "last_request": "2025-03-24T15:18:35.222218",
-  "reg_user_count": 1,
   "created_at": "2025-03-24T15:09:38.985373"
 }
+```
+
+### GET /user/stats
+Get statistics for all urls created by this user. Only authenticated users can look at THEIR OWN statistics.
+
+Example:
+```
+curl -X 'GET' \
+  'http://localhost:8000/user/stats' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer token'
+```
+
+Example Response:
+```
+[
+  {
+    "link_id": 1,
+    "short_code": "ogurchik",
+    "url": "https://akhcheck.ru/course/65#593",
+    "expires_at": "2025-03-31T19:21:36.252161",
+    "active": 1,
+    "request_count": 0,
+    "latest_request": null,
+    "created_at": "2025-03-24T19:21:36.254041"
+  }
+]
 ```
 
 

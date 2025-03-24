@@ -98,7 +98,10 @@ async def use_link(short_code):
         raise HTTPException(status_code=404, detail="Link expired")
     
     await link_app.db.log_request_to_db(link_id, user_id)
-    
+
+    if expires_at < datetime.datetime.now() + datetime.timedelta(days=3):
+        await link_app.db.extend_link_life_db(link_id)
+        
     return RedirectResponse(url)
 
 
@@ -166,9 +169,23 @@ async def get_stats(short_code):
     if link_id is None:
         raise HTTPException(status_code=404, detail="Short link does not exist")
     
-    request_count, latest_request, reg_user_count, created_at = await link_app.db.get_stats_from_db(link_id)
+    request_count, latest_request, created_at = await link_app.db.get_stats_from_db(link_id)
 
-    return {'request_count': request_count, 'last_request': latest_request, 'reg_user_count': reg_user_count, 'created_at': created_at}
+    return {'request_count': request_count, 'last_request': latest_request, 'created_at': created_at}
+
+
+@app.get("/user/stats")
+async def get_user_link_stats(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]):
+    token = credentials.credentials
+
+    curr_user_id = await link_app.users.current_user(token)
+    if curr_user_id is None:
+        raise HTTPException(status_code=401, detail="User unknown")
+    
+    
+    data = await link_app.db.get_all_user_links(curr_user_id)
+
+    return data
 
 
 @app.get("/search")

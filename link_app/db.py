@@ -123,12 +123,17 @@ async def get_user_by_login_password_db(login, password):
 async def log_request_to_db(link_id, user_id):
     await db.execute("""INSERT INTO Requests (link_id, user_id, request_dt)
                               VALUES ($1,$2,$3)""", link_id, user_id, datetime.datetime.now())
+    
+
+async def extend_link_life_db(link_id):
+    await db.execute("""UPDATE Links
+                    SET active = $2
+                    WHERE link_id = $1;""", link_id, datetime.datetime.now() + datetime.timedelta(days=3))
         
 
 async def get_stats_from_db(link_id): 
     request_count = 0
     latest_request = None
-    reg_user_count = 0
     created_at = None
 
     row = await db.fetchrow("""SELECT COUNT(DISTINCT(request_id)) FROM Requests WHERE link_id = $1""", link_id)
@@ -139,15 +144,26 @@ async def get_stats_from_db(link_id):
     if row is not None:
         latest_request = row[0]
 
-    row = await db.fetchrow("""SELECT COUNT(DISTINCT(user_id))  FROM Requests WHERE link_id = $1""", link_id)
-    if row is not None:
-        reg_user_count = row[0]
-
-    row = await db.fetchrow("""SELECT created_at  FROM Links WHERE link_id = $1""", link_id)
+    row = await db.fetchrow("""SELECT created_at FROM Links WHERE link_id = $1""", link_id)
     if row is not None:
         created_at = row[0]
 
-    return request_count, latest_request, reg_user_count, created_at
+    return request_count, latest_request, created_at
+
+
+async def get_all_user_links(user_id):
+    data = []
+    rows = await db.fetch(f"""SELECT link_id, short_code, url, expires_at, active FROM Links WHERE user_id = $1""", user_id)
+
+    for row in rows:
+        link_stats = await get_stats_from_db(row[0])
+        cur_item = {'link_id': row[0], 'short_code': row[1], 'url': row[2],
+                     'expires_at': row[3], 'active': row[4], 'request_count': link_stats[0],
+                       'latest_request': link_stats[1], 'created_at': link_stats[2]}
+        
+        data.append(cur_item)
+        
+    return data
 
 
 async def get_active_codes():
