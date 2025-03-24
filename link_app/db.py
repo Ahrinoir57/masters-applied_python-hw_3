@@ -36,7 +36,7 @@ db = None
 
 async def create_sql_database():
     global db
-    db = await asyncpg.connect('postgresql://postgres:some_password@localhost/postgres')
+    db = await asyncpg.connect('postgresql://postgres:some_password@postgresql/postgres')
 
     for statement in create_table_statements:
         await db.execute(statement)
