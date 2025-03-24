@@ -1,0 +1,1 @@
+0 0 * * * python /usr/src/app/cron_clear_db/clear_expired_links.py >> /var/log/cron.log 2>&1

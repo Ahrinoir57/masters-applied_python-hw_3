@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+aiosqlite
+pyjwt
+pytest
+pytest-mock
+pytest-asyncio
+coverage
