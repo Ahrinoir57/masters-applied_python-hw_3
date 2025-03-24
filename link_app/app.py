@@ -59,6 +59,8 @@ async def create_link(url, credentials: Annotated[HTTPAuthorizationCredentials, 
     
     if expires_at is None:
         expires_at = datetime.datetime.now() + datetime.timedelta(days=7)
+    else:
+        expires_at = datetime.datetime.fromisoformat(expires_at)
 
     if token is None:
         user_id = None

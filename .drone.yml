@@ -1,0 +1,24 @@
+kind: pipeline
+type: docker
+name: main
+
+trigger:
+  event:
+    - custom
+    - tag
+
+image_pull_secrets:
+  - docker_pullsecret
+
+steps:
+  - name: update-image
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      repo: docker.fndk.io/ahrinoir/ap-hw3
+      registry: docker.fndk.io
+      tags:
+        - latest

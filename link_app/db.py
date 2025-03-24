@@ -42,12 +42,10 @@ async def create_sql_database():
         await db.execute(statement)
     
 
-
 async def add_link_to_db(short_code, url, user_id, expires_at):
     await db.execute("""INSERT INTO Links (short_code, url, user_id, created_at, expires_at, active)
                             VALUES ($1,$2,$3,$4,$5,$6)""", short_code, url, user_id, datetime.datetime.now(), expires_at, 1)
 
-        
 
 async def get_link_from_db(short_code):
     url = None
