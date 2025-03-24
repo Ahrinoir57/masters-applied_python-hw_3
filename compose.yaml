@@ -3,3 +3,9 @@ services:
     build: .
     ports:
       - "8000:8000"
+  postgresql:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: "some_password"
+    ports: 
+      - "5432:5432"

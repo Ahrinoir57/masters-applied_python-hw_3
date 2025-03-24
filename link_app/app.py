@@ -58,12 +58,18 @@ async def create_link(url, credentials: Annotated[HTTPAuthorizationCredentials, 
         
     
     if expires_at is None:
-        expires_at = str(datetime.datetime.now() + datetime.timedelta(days=7))
+        expires_at = datetime.datetime.now() + datetime.timedelta(days=7)
 
     if token is None:
         user_id = None
     else:
         user_id = await link_app.users.current_user(token)
+
+
+    link_id, _, _, _ = await link_app.db.get_link_from_db(custom_alias)
+
+    if link_id is not None:
+        raise HTTPException(status_code=400, detail='Sorry, this shortcode is already in use')
 
     try:
         await link_app.db.add_link_to_db(custom_alias, url, user_id, expires_at)
@@ -80,7 +86,7 @@ async def use_link(short_code):
     if link_id is None:
         raise HTTPException(status_code=404, detail="Link does not exist")
     
-    if str(datetime.datetime.now()) > expires_at:
+    if datetime.datetime.now() > expires_at:
         raise HTTPException(status_code=404, detail="Link expired")
     
     await link_app.db.log_request_to_db(link_id, user_id)
@@ -99,7 +105,7 @@ async def delete_link(short_code, credentials: Annotated[HTTPAuthorizationCreden
 
     link_id, url, user_id, expires_at = await link_app.db.get_link_from_db(short_code)
 
-    if str(datetime.datetime.now()) > expires_at:
+    if datetime.datetime.now() > expires_at:
         raise HTTPException(status_code=404, detail="Link expired")
     
     if curr_user_id != user_id:
@@ -129,15 +135,17 @@ async def update_link(short_code, payload:UpdateLinkData,
     if link_id is None:
         raise HTTPException(status_code=404, detail="Short link does not exist")
 
-    if str(datetime.datetime.now()) > expires_at:
+    if datetime.datetime.now() > expires_at:
         raise HTTPException(status_code=404, detail="Link expired")
     
     if curr_user_id != user_id:
         raise HTTPException(status_code=403, detail="Wrong user. Permission Denied")
+
+    expires_at = datetime.datetime.now() + datetime.timedelta(days=7)
     
     try:
         await link_app.db.delete_link_from_db(link_id)
-        await link_app.db.add_link_to_db(short_code, url, user_id)
+        await link_app.db.add_link_to_db(short_code, url, user_id, expires_at)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -161,7 +169,7 @@ async def search_link(original_url):
     if short_code is None:
         raise HTTPException(status_code=404, detail="No url link") 
 
-    if str(datetime.datetime.now()) > expires_at:
+    if datetime.datetime.now() > expires_at:
         raise HTTPException(status_code=404, detail="Link expired") 
     
     return {'short_code': short_code}

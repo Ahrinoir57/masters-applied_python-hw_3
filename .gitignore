@@ -1,3 +1,4 @@
 database
 .coverage
 .pytest_cache
+link_app/__pycache__/
