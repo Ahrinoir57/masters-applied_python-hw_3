@@ -5,6 +5,9 @@ pyjwt
 pytest
 pytest-mock
 pytest-asyncio
+pytest-docker
 coverage
 asyncpg
 aioredis
+requests
+httpx

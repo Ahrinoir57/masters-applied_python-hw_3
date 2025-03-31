@@ -11,8 +11,7 @@ from typing import Annotated, Optional
 
 import link_app.db 
 import link_app.users
-
-import aioredis
+import link_app.redis
 
 
 class UserData(BaseModel):
@@ -40,12 +39,13 @@ security = HTTPBearer()
 opt_security = OptionalHTTPBearer()
 redis = None
 
+conn_string = 'postgresql://postgres:some_password@postgresql/postgres'
+
 @app.on_event("startup")
 async def startup():
-    global redis
 
-    await link_app.db.create_sql_database()
-    redis = await aioredis.from_url("redis://redis")
+    await link_app.db.create_sql_database(conn_string)
+    await link_app.redis.create_redis()
 
 
 @app.post("/links/shorten")
@@ -71,7 +71,7 @@ async def create_link(url, credentials: Annotated[HTTPAuthorizationCredentials, 
     if token is None:
         user_id = None
     else:
-        user_id = await link_app.users.current_user(token)
+        user_id, err = await link_app.users.current_user(token)
 
 
     link_id, _, _, _ = await link_app.db.get_link_from_db(custom_alias)
@@ -110,11 +110,14 @@ async def delete_link(short_code, credentials: Annotated[HTTPAuthorizationCreden
 
     token = credentials.credentials
 
-    curr_user_id = await link_app.users.current_user(token)
+    curr_user_id, err = await link_app.users.current_user(token)
     if curr_user_id is None:
         raise HTTPException(status_code=401, detail="User unknown")
 
     link_id, url, user_id, expires_at = await link_app.db.get_link_from_db(short_code)
+
+    if link_id is None:
+        raise HTTPException(status_code=404, detail="Link does not exist")
 
     if datetime.datetime.now() > expires_at:
         raise HTTPException(status_code=404, detail="Link expired")
@@ -137,7 +140,7 @@ async def update_link(short_code, payload:UpdateLinkData,
     token = credentials.credentials
     url = payload.url
 
-    curr_user_id = await link_app.users.current_user(token)
+    curr_user_id, err = await link_app.users.current_user(token)
     if curr_user_id is None:
         raise HTTPException(status_code=401, detail="User unknown")
 
@@ -178,7 +181,7 @@ async def get_stats(short_code):
 async def get_user_link_stats(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]):
     token = credentials.credentials
 
-    curr_user_id = await link_app.users.current_user(token)
+    curr_user_id, err = await link_app.users.current_user(token)
     if curr_user_id is None:
         raise HTTPException(status_code=401, detail="User unknown")
     
@@ -208,7 +211,8 @@ async def register_user(payload: UserData):
     if err != None:
         raise HTTPException(status_code=400, detail=err)
     
-    await redis.set(payload.login, token, ex=3600)
+    
+    await link_app.redis.cache_token(payload.login, payload.password, token)
 
     return {'token': token}
 
@@ -216,7 +220,7 @@ async def register_user(payload: UserData):
 @app.post("/auth/login")
 async def login_user(payload:UserData):
 
-    cache = await redis.get(payload.login)
+    cache = await link_app.redis.get_token(payload.login, payload.password)
 
     if cache is not None:
         return {'token': cache}
@@ -226,6 +230,6 @@ async def login_user(payload:UserData):
     if token is None:
         raise HTTPException(status_code=401, detail="Login/Password is wronk")
     
-    await redis.set(payload.login, token, ex=3600)
+    await link_app.redis.cache_token(payload.login, payload.password, token)
     
     return {'token': token}

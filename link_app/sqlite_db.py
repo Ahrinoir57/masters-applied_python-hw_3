@@ -2,6 +2,9 @@ import aiosqlite
 import os
 import datetime
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "../database/test.db")
+
 create_table_statements = [ 
     """CREATE TABLE IF NOT EXISTS Links (
             link_id INTEGER PRIMARY KEY, 
@@ -39,7 +42,7 @@ async def create_sql_database():
         print('Creating database')
 
         os.makedirs('./database/')
-        async with aiosqlite.connect("./database/test.db") as conn:
+        async with aiosqlite.connect(db_path) as conn:
             for statement in create_table_statements:
                 await conn.execute(statement)
 
@@ -47,7 +50,7 @@ async def create_sql_database():
 
 
 async def add_link_to_db(short_code, url, user_id, expires_at):
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         cursor = await db.cursor()
         await cursor.execute("""INSERT INTO Links (short_code, url, user_id, created_at, expires_at, active)
                               VALUES (?,?,?,?,?,?)""", (short_code, url, user_id, str(datetime.datetime.now()), expires_at, 1))
@@ -60,12 +63,12 @@ async def get_link_from_db(short_code):
     link_id = None
     user_id = None
     expires_at = None
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f""" SELECT url, link_id, user_id, expires_at FROM Links WHERE short_code = ? AND active = 1""", (short_code,)) as cursor:
             async for row in cursor:
                 url = row[0]
                 link_id = row[1]
-                user_id = row[2]
+                user_id = row[2] 
                 expires_at = row[3]
 
     return link_id, url, user_id, expires_at
@@ -75,7 +78,7 @@ async def find_link_by_url(url):
     user_id = None
     short_code = None
     expires_at = None
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f""" SELECT user_id, short_code, expires_at FROM Links WHERE url = ? AND active = 1""", (url, )) as cursor:
             async for row in cursor:
                 print(row)
@@ -87,25 +90,17 @@ async def find_link_by_url(url):
 
 
 async def delete_link_from_db(link_id):
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         cursor = await db.cursor()
         await cursor.execute(f"""UPDATE Links
-                        SET active = 0
+                        SET active = 0 
                         WHERE link_id = ?;""", (link_id,))
         await db.commit()
         await cursor.close()
 
 
-async def update_link_db(url, short_code):
-    old_url, link_id, user_id, expires_at = await get_link_from_db(short_code)
-
-    await delete_link_from_db(link_id)
-
-    await add_link_to_db(short_code, url, user_id)
-
-
 async def register_user_to_db(login, password):
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         cursor = await db.cursor()
         await cursor.execute("""INSERT INTO Users (login, password, created_at)
                               VALUES (?,?,?)""", (login, password, str(datetime.datetime.now())))
@@ -116,7 +111,7 @@ async def register_user_to_db(login, password):
 async def get_user_by_login_db(login):
     user_id = None
     
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f""" SELECT user_id FROM Users WHERE login = ? """, (login,)) as cursor:
             async for row in cursor:
                 user_id = row[0]
@@ -127,7 +122,7 @@ async def get_user_by_login_db(login):
 async def get_user_by_login_password_db(login, password):
     user_id = None
     
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f"""SELECT user_id FROM Users WHERE login = ? AND password = ? """, (login, password)) as cursor:
             async for row in cursor:
                 user_id = row[0]
@@ -136,7 +131,7 @@ async def get_user_by_login_password_db(login, password):
 
 
 async def log_request_to_db(link_id, user_id):
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         cursor = await db.cursor()
         await cursor.execute("""INSERT INTO Requests (link_id, user_id, request_dt)
                               VALUES (?,?,?)""", (link_id, user_id, str(datetime.datetime.now())))
@@ -147,10 +142,9 @@ async def log_request_to_db(link_id, user_id):
 async def get_stats_from_db(link_id): 
     request_count = 0
     latest_request = None
-    reg_user_count = 0
     created_at = None
 
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f"""SELECT COUNT(DISTINCT(request_id)) FROM Requests WHERE link_id = ?""", (link_id,)) as cursor:
             async for row in cursor:
                 request_count = row[0]
@@ -159,21 +153,17 @@ async def get_stats_from_db(link_id):
             async for row in cursor:
                 latest_request = row[0]
 
-        async with db.execute(f"""SELECT COUNT(DISTINCT(user_id)) FROM Requests WHERE link_id = ?""", (link_id,)) as cursor:
-            async for row in cursor:
-                reg_user_count = row[0]
-
         async with db.execute(f"""SELECT created_at  FROM Links WHERE link_id = ?""", (link_id,)) as cursor:
             async for row in cursor:
                 created_at = row[0]
     
 
-    return request_count, latest_request, reg_user_count, created_at
+    return request_count, latest_request, created_at
 
 
 async def get_active_codes():
     codes = []
-    async with aiosqlite.connect("./database/test.db") as db:
+    async with aiosqlite.connect(db_path) as db:
         async with db.execute(f"""SELECT short_code FROM Links WHERE active = 1""") as cursor:
             async for row in cursor:
                 codes.append(row[0])

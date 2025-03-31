@@ -34,9 +34,9 @@ create_table_statements = [
 
 db = None
 
-async def create_sql_database():
+async def create_sql_database(conn_string):
     global db
-    db = await asyncpg.connect('postgresql://postgres:some_password@postgresql/postgres')
+    db = await asyncpg.connect(conn_string)
 
     for statement in create_table_statements:
         await db.execute(statement)
@@ -83,14 +83,6 @@ async def delete_link_from_db(link_id):
     await db.execute("""UPDATE Links
                     SET active = 0
                     WHERE link_id = $1;""", link_id)
-        
-
-async def update_link_db(url, short_code):
-    old_url, link_id, user_id, expires_at = await get_link_from_db(short_code)
-
-    await delete_link_from_db(link_id)
-
-    await add_link_to_db(short_code, url, user_id)
 
 
 async def register_user_to_db(login, password):

@@ -42,22 +42,22 @@ async def login_user(login, password):
 
 
 async def current_user(token):
-
     try:
         decoded_token = jwt.decode(token, salt, algorithms=["HS256"])
         login = decoded_token['login']
         expires_at = decoded_token['expires_at']
     except Exception as e:
         print('Invalid token')
-        return None
+        return None, 'Invalid token'
 
     if expires_at < str(datetime.datetime.now()):
         print('Expired token')
-        return None
+        return None, 'Expired token'
 
     user_id = await link_app.db.get_user_by_login_db(login)
 
     if user_id is None:
         print('Invalid login')
+        return user_id, 'Invalid login'
 
-    return user_id
+    return user_id, None
