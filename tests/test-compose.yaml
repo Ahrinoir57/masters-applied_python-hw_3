@@ -1,0 +1,27 @@
+services:
+  web:
+    build: ../
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_started
+  postgresql:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: "some_password"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    ports:
+      - "5432:5432" 
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"

@@ -6,12 +6,25 @@ import link_app.sqlite_db
 from pytest_mock import MockerFixture
 import pytest
 import datetime
+import pytest_asyncio
 pytest_plugins = ('pytest_asyncio',)
 
 
+@pytest_asyncio.fixture
+async def sqlite_service():
+    """Ensure that HTTP service is up and responsive."""
+
+    try:
+        await link_app.sqlite_db.create_sql_database()
+        yield 
+    
+    finally:
+        os.remove("./database/test.db")
+        os.rmdir("./database/")
+
+
 @pytest.mark.asyncio
-async def test_find_link_url():
-    await link_app.sqlite_db.create_sql_database()
+async def test_find_link_url(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -25,13 +38,9 @@ async def test_find_link_url():
     assert f_short_code == short_code
     assert f_expires_at == expires_at 
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
-
 
 @pytest.mark.asyncio
-async def test_find_link_short_code():
-    await link_app.sqlite_db.create_sql_database()
+async def test_find_link_short_code(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -45,13 +54,9 @@ async def test_find_link_short_code():
     assert f_url == url
     assert f_expires_at == expires_at 
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
-
 
 @pytest.mark.asyncio
-async def test_find_link_short_code():
-    await link_app.sqlite_db.create_sql_database()
+async def test_find_link_short_code(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -65,13 +70,9 @@ async def test_find_link_short_code():
     assert f_url == url
     assert f_expires_at == expires_at 
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
-
 
 @pytest.mark.asyncio
-async def test_delete_link():
-    await link_app.sqlite_db.create_sql_database()
+async def test_delete_link(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -88,13 +89,9 @@ async def test_delete_link():
 
     assert link_id is None
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
-
 
 @pytest.mark.asyncio
-async def test_find_user():
-    await link_app.sqlite_db.create_sql_database()
+async def test_find_user(sqlite_service):
 
     login='abcd'
     password='1234'
@@ -107,13 +104,10 @@ async def test_find_user():
     log_pas_user_id = await link_app.sqlite_db.get_user_by_login_password_db(login, password)
     assert user_id == log_pas_user_id
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
 
 
 @pytest.mark.asyncio
-async def test_active_codes():
-    await link_app.sqlite_db.create_sql_database()
+async def test_active_codes(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -130,13 +124,9 @@ async def test_active_codes():
     codes = await link_app.sqlite_db.get_active_codes()
     assert codes == ['aaaa', 'aaab', 'aaac']
 
-    os.remove("./database/test.db")
-    os.rmdir("./database/")
-
 
 @pytest.mark.asyncio
-async def test_get_stats():
-    await link_app.sqlite_db.create_sql_database()
+async def test_get_stats(sqlite_service):
 
     short_code = 'aaaa'
     url = 'yandex.ru'
@@ -156,6 +146,3 @@ async def test_get_stats():
     assert request_count == 3
     assert latest_request is not None
     assert created_at is not None
-
-    os.remove("./database/test.db")
-    os.rmdir("./database/")

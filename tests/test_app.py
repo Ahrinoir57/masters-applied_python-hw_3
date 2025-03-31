@@ -32,10 +32,25 @@ def test_register_user(mocker: MockerFixture):
     assert response.json()['token'] is not None
 
 
-def test_login_user(mocker: MockerFixture):
+def test_login_user_cached_token(mocker: MockerFixture):
     patch = mocker.patch('link_app.users.login_user', return_value='haha')
     redis_patch = mocker.patch('link_app.redis.cache_token')
-    redis_get_patch = mocker.patch('link_app.redis.get_token')
+    redis_get_patch = mocker.patch('link_app.redis.get_token', return_value='haha')
+
+    login="abcd"
+    password="1234"
+
+    response = client.post("/auth/login", json={"login": login, "password": password})
+
+    assert response.status_code == 200
+    redis_get_patch.assert_called_once_with(login, password)
+    assert response.json()['token'] is not None
+
+
+def test_login_user_no_cache(mocker: MockerFixture):
+    patch = mocker.patch('link_app.users.login_user', return_value='haha')
+    redis_patch = mocker.patch('link_app.redis.cache_token')
+    redis_get_patch = mocker.patch('link_app.redis.get_token', return_value=None)
 
     login="abcd"
     password="1234"
@@ -47,6 +62,7 @@ def test_login_user(mocker: MockerFixture):
     redis_patch.assert_called_once_with(login, password, 'haha')
     redis_get_patch.assert_called_once_with(login, password)
     assert response.json()['token'] is not None
+
 
 
 def test_create_link(mocker: MockerFixture):
@@ -61,6 +77,18 @@ def test_create_link(mocker: MockerFixture):
     assert response.status_code == 200
     patch.assert_called_once_with()
     assert response.json()['short_code'] is not None
+
+
+def test_create_link_duplicate_short_codes(mocker: MockerFixture):
+    patch = mocker.patch('link_app.db.get_active_codes', return_value=['aaaa'])
+    link_patch = mocker.patch('link_app.db.get_link_from_db', return_value=(1, None, None, None))
+    adding_link_patch = mocker.patch('link_app.db.add_link_to_db')
+
+    url = "yandex.ru"
+
+    response = client.post(f"/links/shorten?url={url}&custom_alias=aaaa")
+
+    assert response.status_code == 400
 
 
 def test_delete_link(mocker: MockerFixture):
@@ -174,8 +202,6 @@ def test_short_code_stats(mocker: MockerFixture):
 def test_user_stats(mocker: MockerFixture):
     patch = mocker.patch('link_app.users.current_user', return_value=(1, None))
     stats_patch = mocker.patch('link_app.db.get_all_user_links', return_value=['data'])
-
-    short_code = 'aaaa'
 
     response = client.get(f"/user/stats", headers={"Authorization": f"Bearer token"})
 

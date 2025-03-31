@@ -35,7 +35,6 @@ def http_service(docker_ip, docker_services):
 
 @pytest.mark.long
 def test_url_register_user(http_service):
-    print(http_service)
     status = 200
     response = requests.post(http_service + "/auth/register", json={'login': 'test_url_register_user', 'password': '1234'})
 
@@ -45,7 +44,7 @@ def test_url_register_user(http_service):
 
 @pytest.mark.long
 def test_url_login_user(http_service):
-    print(http_service)
+
     status = 200
     response = requests.post(http_service + "/auth/register", json={'login': 'test_url_login_user', 'password': '1234'})
 

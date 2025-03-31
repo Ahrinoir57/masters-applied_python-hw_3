@@ -4,7 +4,7 @@ import pytest
 
 @pytest.fixture(scope="session")
 def docker_compose_file(pytestconfig):
-    return os.path.join(str(pytestconfig.rootdir), "compose.yaml")
+    return os.path.join(str(pytestconfig.rootdir), "tests", "test-compose.yaml")
 
 
 # Pin the project name to avoid creating multiple stacks
